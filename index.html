@@ -237,7 +237,16 @@
                     body.style.background = 'linear-gradient(to bottom, #2c3e50, #bdc3c7)';
                     break;
             }
-        }
+        };
+
+        document.body.addEventListener('click', function(event) {
+        // Check if the click is outside the search box or autocomplete suggestions
+            if (!searchBox.contains(event.target) && !autocompleteSuggestions.contains(event.target)) {
+                autocompleteSuggestions.innerHTML = ""; // Clear suggestions
+                autocompleteSuggestions.style.display = "none"; // Hide suggestions
+            }
+        });
+        
     </script>
 </body>
 </html>
