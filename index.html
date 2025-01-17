@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="card">
+        <div class="search">
+            <input type="text" id="city-input" placeholder="Enter city name" spellcheck="false">
+            <button><img src="images/search.png" alt="search icon"></button>
+        </div>
+        <div id="autocomplete-suggestions" class="autocomplete-suggestions"></div>
+        <label class="location-toggle">
+            <input type="checkbox" id="location-toggle">
+            Use Current Location
+        </label>
+        <div class="error">
+            <p>Invalid city name</p>
+        </div>
+        <div class="loading" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+        <div class="weather">
+            <img src="images/rain.png" class="weather-icon" alt="weather condition icon">
+            <h1 class="temp">22°C</h1>
+            <h2 class="city">Makati City</h2>
+            <div class="details">
+                <div class="col">
+                    <img src="images/humidity.png" alt="humidity icon">
+                    <div>
+                        <p class="humidity">50%</p>
+                        <p>Humidity</p>
+                    </div>
+                </div>
+
+                <div class="col">
+                    <img src="images/wind.png" alt="wind icon">
+                    <div>
+                        <p class="wind">15 km/h</p>
+                        <p>Wind Speed</p>
+                    </div>
+                </div>
+            </div>
+
+            <label class="unit-toggle">
+                <input type="checkbox" id="unit-toggle">
+                °F / °C
+            </label>
+        </div>
+    </div>
+
+    <script src="config.js"></script> <!-- Link to your API key -->
+
+    <script>
+        const apiKey = config.API_KEY;
+        const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
+        const geoApiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&lat=";
+        const body = document.body;
+
+        const searchBox = document.getElementById("city-input");
+        const searchBtn = document.querySelector(".search button");
+        const locationToggle = document.getElementById("location-toggle");
+        const weatherIcon = document.querySelector(".weather-icon");
+
+        const unitToggle = document.getElementById("unit-toggle");
+        let currentUnit = "C"; 
+
+        const lastSearchedCity = localStorage.getItem('lastSearchedCity'); 
+
+        const autocompleteSuggestions = document.getElementById("autocomplete-suggestions");
+
+        searchBox.addEventListener("input", async function () {
+            const query = searchBox.value.trim();
+            if (query.length > 2) {
+                const apiUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
+                try {
+                    const response = await fetch(apiUrl, { headers: { "User-Agent": "WeatherApp/1.0" } });
+                    const cities = await response.json();
+
+                    autocompleteSuggestions.innerHTML = "";
+
+                    cities.forEach(city => {
+                        if (city.address && city.address.city) {
+                            const suggestionDiv = document.createElement("div");
+                            suggestionDiv.textContent = city.address.city;
+                            suggestionDiv.classList.add("suggestion-item");
+                            suggestionDiv.addEventListener("click", function () {
+                                searchBox.value = city.address.city; 
+                                autocompleteSuggestions.innerHTML = ""; 
+                                checkWeather(city.address.city); 
+                            });
+                            autocompleteSuggestions.appendChild(suggestionDiv);
+                        }
+                    });
+
+                    autocompleteSuggestions.style.display = cities.length > 0 ? "block" : "none";
+                } catch (error) {
+                    console.error("Failed to fetch city suggestions:", error);
+                }
+            } else {
+                autocompleteSuggestions.innerHTML = "";
+                autocompleteSuggestions.style.display = "none";
+            }
+        });
+
+        if (lastSearchedCity) {
+            searchBox.value = lastSearchedCity;  
+            checkWeather(lastSearchedCity);  
+        }
+
+        searchBtn.addEventListener("click", function () {
+            const city = searchBox.value.trim();
+            if (city) {
+                checkWeather(city);
+            }
+        });
+
+        locationToggle.addEventListener("change", () => {
+            if (locationToggle.checked) {
+                searchBox.disabled = true;
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const lat = position.coords.latitude;
+                            const lon = position.coords.longitude;
+                            const geoUrl = `${geoApiUrl}${lat}&lon=${lon}&appid=${apiKey}`;
+                            await checkWeatherByGeo(geoUrl);
+                        },
+                        () => {
+                            alert("Unable to retrieve your location. Please check location settings.");
+                            locationToggle.checked = false;
+                        }
+                    );
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                    locationToggle.checked = false;
+                }
+            } else {
+                searchBox.disabled = false;
+            }
+        });
+
+        async function checkWeather(city) {
+            const loadingDiv = document.querySelector(".loading");
+            const weatherDiv = document.querySelector(".weather");
+            const errorDiv = document.querySelector(".error");
+
+            loadingDiv.style.display = "block";
+            weatherDiv.style.display = "none";
+            errorDiv.style.display = "none";
+
+            try {
+                const response = await fetch(apiUrl + city + `&appid=${apiKey}`);
+                if (response.status === 404) {
+                    errorDiv.style.display = "block";
+                } else {
+                    const data = await response.json();
+                    updateWeatherUI(data);
+                    localStorage.setItem('lastSearchedCity', city);
+                }
+            } catch (error) {
+                alert("Failed to fetch weather. Please try again.");
+            } finally {
+                loadingDiv.style.display = "none";
+            }
+        }
+
+        async function checkWeatherByGeo(geoUrl) {
+            const loadingDiv = document.querySelector(".loading");
+            const weatherDiv = document.querySelector(".weather");
+            const errorDiv = document.querySelector(".error");
+
+            loadingDiv.style.display = "block";
+            weatherDiv.style.display = "none";
+            errorDiv.style.display = "none";
+
+            try {
+                const response = await fetch(geoUrl);
+                const data = await response.json();
+                updateWeatherUI(data);
+            } catch (error) {
+                alert("Failed to fetch weather by geolocation. Please try again.");
+            } finally {
+                loadingDiv.style.display = "none";
+            }
+        }
+
+        function celsiusToFahrenheit(celsius) {
+            return (celsius * 9/5) + 32;
+        }
+
+        function updateWeatherUI(data) {
+            let temperature = data.main.temp;
+            if (currentUnit === "F") {
+                temperature = celsiusToFahrenheit(temperature);
+            }
+
+            document.querySelector(".city").innerHTML = data.name;
+            document.querySelector(".temp").innerHTML = Math.round(temperature) + (currentUnit === "C" ? "°C" : "°F");
+            document.querySelector(".humidity").innerHTML = data.main.humidity + "%";
+            document.querySelector(".wind").innerHTML = data.wind.speed + " km/h";
+
+            const condition = data.weather[0].main.toLowerCase();
+            weatherIcon.src = `images/${condition}.png`;
+
+            updateBackground(condition);
+
+            document.querySelector(".weather").style.display = "block";
+            document.querySelector(".error").style.display = "none";
+        }
+
+        unitToggle.addEventListener("change", () => {
+            if (unitToggle.checked) {
+                currentUnit = "F";
+            } else {
+                currentUnit = "C";
+            }
+            checkWeather(searchBox.value);
+        });
+
+        function updateBackground(weather) {
+            switch (weather) {
+                case 'clear':
+                    body.style.background = 'linear-gradient(to bottom, #ff7e5f, #feb47b)';
+                    break;
+                case 'clouds':
+                    body.style.background = 'linear-gradient(to bottom, #bdc3c7, #2c3e50)';
+                    break;
+                case 'rain':
+                    body.style.background = 'linear-gradient(to bottom, #00416A, #E4E5E6)';
+                    break;
+                default:
+                    body.style.background = 'linear-gradient(to bottom, #2c3e50, #bdc3c7)';
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>
