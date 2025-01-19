@@ -24,13 +24,10 @@ A simple and responsive weather app that provides real-time weather updates. Use
 ## Installation:
 
 ### 1. Clone the repository:
-  ```bash
   git clone https://github.com/your-username/weather-app.git
-
 
 2. Navigate to the project folder:
   cd weather-app
-
 
 3. Open the index.html file in your preferred web browser to start using the app.
 
