@@ -1,7 +1,7 @@
 # weather-app
 A simple and responsive weather app that provides real-time weather updates. Users can search for cities, view the weather conditions, toggle between Celsius and Fahrenheit, and enjoy a dynamic background based on the weather. The app supports geolocation for getting weather in the user's current location and saves the last searched city.
 
-![Weather App](https://imgur.com/a/gZEF0NH)
+![Weather App](https://i.imgur.com/G7DnHVt.png)
 
 ## Features:
 - **City search** with autocomplete suggestions
